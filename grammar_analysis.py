@@ -1,9 +1,7 @@
 # @Author  : Edlison
 # @Date    : 11/17/20 00:11
 import os
-
 from typing import List
-
 from compiler_exception import GrammarAnalyseException
 # TODO 1.lastvt,firstvt 2.priority 3.analyse stack 生成产生式
 # TODO 1.通过产生式 生成树 2.通过树进行语义分析
@@ -56,11 +54,10 @@ class PriorityTable:
         self.relation = [0, 1, 2, 3]
 
     def is_in_terminal(self, s):
-
-        pass
-
-    def terminal_index(self, s):
-        pass
+        for each in self.terminal:
+            if s == each:
+                return True
+        return False
 
 
 class GrammarAnalyzer:
@@ -139,18 +136,42 @@ class GrammarAnalyzer:
                         table[row][col] = 3
                 else:  # 是终结符
                     if right[index + 1].isupper():  # 第二个是非终结符 <
-                        pass
+                        firstvt = []
+                        for each_grammar_ in self.grammar_table:
+                            if each_grammar_.non_terminal == right[index + 1]:
+                                firstvt.append(each_grammar_.firstvt)
+                                break
+                        for i in firstvt:
+                            row = self.priority_table.terminal.index(right[index])
+                            col = self.priority_table.terminal.index(i)
+                            table[row][col] = 1
                         if (index + 2) < len(right) and right[index + 2].islower():  # 看第三个如果是终结符 =
-                            pass
+                            row = self.priority_table.terminal.index(right[index])
+                            col = self.priority_table.terminal.index(right[index + 2])
+                            table[row][col] = 2
                     else:  # 第二个是终结符 =
-                        pass
+                        row = self.priority_table.terminal.index(right[index])
+                        col = self.priority_table.terminal.index(right[index + 1])
+                        table[row][col] = 2
             for index, each_ch in enumerate(right[:-3]):  # 到倒数第三个 =
-                pass
-
-
-
-
-
+                ch1 = right[index]
+                ch2 = right[index + 1]
+                ch3 = right[index + 2]
+                if ch1.islower():
+                    if ch2.isupper():
+                        row = self.priority_table.terminal.index(ch1)
+                        col = self.priority_table.terminal.index(ch3)
+                        table[row][col] = 2
+                    else:
+                        row = self.priority_table.terminal.index(ch1)
+                        col = self.priority_table.terminal.index(ch2)
+                        table[row][col] = 2
+                else:
+                    if ch2.islower() and ch3.islower():
+                        row = self.priority_table.terminal.index(ch2)
+                        col = self.priority_table.terminal.index(ch3)
+                        table[row][col] = 2
+        self.table = table
 
 
 if __name__ == '__main__':
@@ -160,5 +181,5 @@ if __name__ == '__main__':
     ga.gen_firstvt_lastvt()
     for i in ga.grammar_table:
         print(i)
-    a = ['a', 'b', 'c']
-    print('index', a.index('a'))
+    ga.gen_priority_table()
+    print(ga.table)
