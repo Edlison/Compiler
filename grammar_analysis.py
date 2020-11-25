@@ -1,9 +1,11 @@
 # @Author  : Edlison
 # @Date    : 11/17/20 00:11
 import os
-from typing import List
+from typing import List, Dict, Set
 from compiler_exception import GrammarAnalyseException
-# TODO 1.lastvt,firstvt 2.priority 3.analyse stack 生成产生式
+
+
+# TODO 1.priority table 2.analyse stack 生成产生式
 # TODO 1.通过产生式 生成树 2.通过树进行语义分析
 
 
@@ -18,12 +20,8 @@ class Grammar:
         self.id = id  # 文法序号
         self.left = left  # 文法左半部分
         self.right = right  # 文法右半部分
-
         self.terminal = []
         self.non_terminal = []
-
-        self.firstvt = []
-        self.lastvt = []
 
         for each in right.split(' '):
             if each.isupper():
@@ -31,27 +29,17 @@ class Grammar:
             else:
                 self.terminal.append(each)
 
-    def is_in_firstvt(self, s):
-        for each in self.firstvt:
-            if s == each:
-                return True
-        return False
-
-    def is_in_lastvt(self, s):
-        for each in self.lastvt:
-            if s == each:
-                return True
-        return False
-
     def __str__(self):
-        return 'ID: {} \t Left: {} \t Right: {} \n end: {} \n not_end: {} \n FirstVT: {} \n LastVT: {}'.format(
-            self.id, self.left, self.right, self.terminal, self.non_terminal, self.firstvt, self.lastvt)
+        return 'ID: {} \t Left: {} \t Right: {} \n end: {} \n not_end: {} \n'.format(
+            self.id, self.left, self.right, self.terminal, self.non_terminal)
 
 
 class PriorityTable:
     def __init__(self):
         self.terminal = []
-        self.relation = [0, 1, 2, 3]
+        self.firstvt: (str, set) = {}
+        self.lastvt: (str, set) = {}
+        self.relation = {0: 'null', 1: '=', 2: '<', 3: '>'}
 
     def is_in_terminal(self, s):
         for each in self.terminal:
@@ -64,8 +52,7 @@ class GrammarAnalyzer:
     def __init__(self, grammar_table_path):
         self.text = ''
         self.grammar_table: List[Grammar] = []
-        self.priority_table = PriorityTable()
-
+        self.priority_table: PriorityTable = PriorityTable()
 
         self._load_grammar_table(grammar_table_path)
 
@@ -79,39 +66,43 @@ class GrammarAnalyzer:
         for each in grammar_list:
             self.grammar_table.append(Grammar(each[0], each[1], each[2]))
 
-    def is_not_end(self, end, s):  # 判断是否是非终结符
-        pass
-
-    def find_grammar(self, t):  # 根据非终结符找文法
-        pass
-
     def gen_firstvt_lastvt(self):
-        epoch = self.grammar_table[len(self.grammar_table) - 1].id  # 拿到文法的个数
-        for i in range(epoch):  # 每个文法都比对一遍
-            for each in self.grammar_table:
-                if i == each.id:
-                    right = each.right.split(' ')
-                    # firstvt
-                    if right[0].islower() and right[0] is not '?':  # TODO islower还需要判断?吗
-                        if not each.is_in_firstvt(right[0]):
-                            each.firstvt.append(right[0])
-                    else:
-                        if len(right) > 1:
-                            if right[1].islower():
-                                if not each.is_in_firstvt(right[1]):
-                                    each.firstvt.append(right[1])
-                    # lastvt
-                    last = len(right) - 1
-                    if right[last].islower() and right[last] is not '?':
-                        if not each.is_in_lastvt(right[last]):
-                            each.lastvt.append((right[last]))
-                    else:
-                        if len(right) > 1:
-                            if right[last - 1].islower():
-                                if not each.is_in_lastvt(right[last - 1]):
-                                    each.lastvt.append(right[last - 1])
+        # 生成priority_table独立的firstvt lastvt
+        for each_grammar in self.grammar_table:
+            if not self.priority_table.firstvt.get(each_grammar.left) and not self.priority_table.lastvt.get(
+                    (each_grammar.left)):
+                self.priority_table.firstvt[each_grammar.left] = set()
+                self.priority_table.lastvt[each_grammar.left] = set()
+
+        # 考虑只是终结符的情况
+        for each_grammar in self.grammar_table:
+            right = each_grammar.right.split(' ')
+            # firstvt
+            if not right[0].isupper() and right[0] is not '?':
+                self.priority_table.firstvt[each_grammar.left].add(right[0])
+            else:
+                if len(right) > 1:
+                    if not right[1].isupper():
+                        self.priority_table.firstvt[each_grammar.left].add(right[1])
+            # lastvt
+            last = len(right) - 1
+            if not right[last].isupper() and right[last] is not '?':
+                self.priority_table.lastvt[each_grammar.left].add((right[last]))
+            else:
+                if len(right) > 1:
+                    if not right[last - 1].isupper():
+                        self.priority_table.lastvt[each_grammar.left].add(right[last - 1])
+
+        # 考虑非终结符开头结尾的情况
+        for each_grammar in reversed(self.grammar_table):
+            if each_grammar.right[0].isupper():
+                self.priority_table.firstvt[each_grammar.left].update(self.priority_table.firstvt[each_grammar.right[0]])
+            if each_grammar.right[-1].isupper():
+                self.priority_table.lastvt[each_grammar.left].update(self.priority_table.lastvt[each_grammar.right[-1]])
 
     def gen_priority_table(self):
+        # TODO islower改为not isupper
+        # TODO grammar中的firstvt lastvt
         # Table拿到所有终结符
         for each_grammar in self.grammar_table:
             terminal = each_grammar.terminal
@@ -120,7 +111,7 @@ class GrammarAnalyzer:
                     self.priority_table.terminal.append(each_terminal)
 
         row_col = len(self.priority_table.terminal)
-        table = [[0 for row in range(row_col)] for col in range(row_col)]
+        table = [[0 for _ in range(row_col)] for _ in range(row_col)]
         for each_grammar in self.grammar_table:
             right = each_grammar.right.split(' ')
             for index, each_ch in enumerate(right[:-2]):  # 只到倒数第二个
@@ -179,7 +170,9 @@ if __name__ == '__main__':
     for i in ga.grammar_table:
         print(i)
     ga.gen_firstvt_lastvt()
-    for i in ga.grammar_table:
-        print(i)
-    ga.gen_priority_table()
-    print(ga.table)
+
+    print('first', ga.priority_table.firstvt)
+    print('last', ga.priority_table.lastvt)
+
+    d = {}
+    s = {''}
