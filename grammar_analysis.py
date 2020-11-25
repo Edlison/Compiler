@@ -5,7 +5,7 @@ from typing import List, Dict, Set
 from compiler_exception import GrammarAnalyseException
 
 
-# TODO 1.priority table 2.analyse stack 生成产生式
+# TODO 1.analyse stack 生成产生式
 # TODO 1.通过产生式 生成树 2.通过树进行语义分析
 
 
@@ -39,7 +39,7 @@ class PriorityTable:
         self.terminal = []
         self.firstvt: (str, set) = {}
         self.lastvt: (str, set) = {}
-        self.relation = {0: 'null', 1: '=', 2: '<', 3: '>'}
+        self.relation = {0: 'ni', 1: '=', 2: '<', 3: '>'}
 
     def is_in_terminal(self, s):
         for each in self.terminal:
@@ -101,72 +101,42 @@ class GrammarAnalyzer:
                 self.priority_table.lastvt[each_grammar.left].update(self.priority_table.lastvt[each_grammar.right[-1]])
 
     def gen_priority_table(self):
-        # TODO islower改为not isupper
-        # TODO grammar中的firstvt lastvt
         # Table拿到所有终结符
         for each_grammar in self.grammar_table:
             terminal = each_grammar.terminal
             for each_terminal in terminal:
                 if not self.priority_table.is_in_terminal(each_terminal) and each_terminal is not '?':
                     self.priority_table.terminal.append(each_terminal)
-
         row_col = len(self.priority_table.terminal)
-        table = [[0 for _ in range(row_col)] for _ in range(row_col)]
+        table = [[self.priority_table.relation[0] for _ in range(row_col)] for _ in range(row_col)]
+
         for each_grammar in self.grammar_table:
             right = each_grammar.right.split(' ')
-            for index, each_ch in enumerate(right[:-2]):  # 只到倒数第二个
-                if each_ch.isupper():  # 是非终结符 >
-                    lastvt = []
-                    for each_grammar_ in self.grammar_table:
-                        if each_grammar_.non_terminal == each_ch:  # TODO 文法的nonterminal有多个 == each_ch??
-                            lastvt.append(each_grammar_.lastvt)
-                            break
-                    for i in lastvt:
-                        row = self.priority_table.terminal.index(i)
-                        col = self.priority_table.terminal.index(right[index + 1])
-                        table[row][col] = 3
-                else:  # 是终结符
-                    if right[index + 1].isupper():  # 第二个是非终结符 <
-                        firstvt = []
-                        for each_grammar_ in self.grammar_table:
-                            if each_grammar_.non_terminal == right[index + 1]:
-                                firstvt.append(each_grammar_.firstvt)
-                                break
-                        for i in firstvt:
-                            row = self.priority_table.terminal.index(right[index])
-                            col = self.priority_table.terminal.index(i)
-                            table[row][col] = 1
-                        if (index + 2) < len(right) and right[index + 2].islower():  # 看第三个如果是终结符 =
-                            row = self.priority_table.terminal.index(right[index])
-                            col = self.priority_table.terminal.index(right[index + 2])
-                            table[row][col] = 2
-                    else:  # 第二个是终结符 =
-                        row = self.priority_table.terminal.index(right[index])
-                        col = self.priority_table.terminal.index(right[index + 1])
-                        table[row][col] = 2
-            for index, each_ch in enumerate(right[:-3]):  # 到倒数第三个 =
-                ch1 = right[index]
-                ch2 = right[index + 1]
-                ch3 = right[index + 2]
-                if ch1.islower():
-                    if ch2.isupper():
-                        row = self.priority_table.terminal.index(ch1)
-                        col = self.priority_table.terminal.index(ch3)
-                        table[row][col] = 2
-                    else:
-                        row = self.priority_table.terminal.index(ch1)
-                        col = self.priority_table.terminal.index(ch2)
-                        table[row][col] = 2
-                else:
-                    if ch2.islower() and ch3.islower():
-                        row = self.priority_table.terminal.index(ch2)
-                        col = self.priority_table.terminal.index(ch3)
-                        table[row][col] = 2
+            for i, _ in enumerate(right[:-1]):
+                if not right[i].isupper() and not right[i + 1].isupper():
+                    row = self.priority_table.terminal.index(right[i])
+                    col = self.priority_table.terminal.index(right[i + 1])
+                    table[row][col] = self.priority_table.relation[1]  # 1: '='
+                if i < len(right) - 2 and not right[i].isupper() and not right[i + 2].isupper():
+                    row = self.priority_table.terminal.index(right[i])
+                    col = self.priority_table.terminal.index(right[i + 2])
+                    table[row][col] = self.priority_table.relation[1]  # 1: '='
+                if not right[i].isupper() and right[i + 1].isupper():
+                    row = self.priority_table.terminal.index(right[i])
+                    for each_firstvt in self.priority_table.firstvt[right[i + 1]]:
+                        col = self.priority_table.terminal.index(each_firstvt)
+                        table[row][col] = self.priority_table.relation[2]  # 2: '<'
+                if right[i].isupper() and not right[i + 1].isupper():
+                    col = self.priority_table.terminal.index(right[i + 1])
+                    for each_lastvt in self.priority_table.lastvt[right[i]]:
+                        row = self.priority_table.terminal.index(each_lastvt)
+                        table[row][col] = self.priority_table.relation[3]  # 3: '>'
+                # raise GrammarAnalyseException('优先表无此关系')
         self.table = table
 
 
 if __name__ == '__main__':
-    ga = GrammarAnalyzer('./grammar_table.txt')
+    ga = GrammarAnalyzer('grammar_table_full.txt')
     for i in ga.grammar_table:
         print(i)
     ga.gen_firstvt_lastvt()
@@ -174,5 +144,15 @@ if __name__ == '__main__':
     print('first', ga.priority_table.firstvt)
     print('last', ga.priority_table.lastvt)
 
-    d = {}
-    s = {''}
+    ga.gen_priority_table()
+
+    for i in ga.priority_table.terminal:
+        print('\t' + i, end='')
+    print()
+    for i, each in enumerate(ga.table):
+        print(ga.priority_table.terminal[i] + '\t', end='')
+        for j in each:
+            print(j + '\t', end='')
+        print()
+
+
