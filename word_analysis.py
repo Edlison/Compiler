@@ -144,7 +144,7 @@ class WordAnalyzer:
                 if line[i] != ' ':  # 字符不为空时继续
                     word = ''  # 初始化当前word
                     if 'A' <= line[i] <= 'Z' or 'a' <= line[i] <= 'z':  # word 以 字母开头
-                        while 'A' <= line[i] <= 'Z' or 'a' <= line[i] <= 'z' or '0' <= line[i] <= '9':
+                        while i < len(line) and ('A' <= line[i] <= 'Z' or 'a' <= line[i] <= 'z' or '0' <= line[i] <= '9'):
                             word += line[i]
                             i += 1
                         if self._is_keyword(word):  # 判断是不是关键字 不是的话只能是标识符
@@ -154,7 +154,7 @@ class WordAnalyzer:
                                 self.word_symbol.append(WordSymbol(len(self.word_symbol), word, 0))
                             self.word_token.append(WordToken(len(self.word_token), word, self._get_code('id'), self._get_addr(word)))
                     elif '0' <= line[i] <= '9':  # word 以 数字开头
-                        while '0' <= line[i] <= '9' or line[i] == '.' or 'A' <= line[i] <= 'Z' or 'a' <= line[i] <= 'z':
+                        while i < len(line) and ('0' <= line[i] <= '9' or line[i] == '.' or 'A' <= line[i] <= 'Z' or 'a' <= line[i] <= 'z'):
                             word += line[i]
                             i += 1
                         if self._is_integer(word):  # 整数
@@ -175,12 +175,12 @@ class WordAnalyzer:
                             self.word_token.append(WordToken(len(self.word_token), word, self._get_code(word)))
                         elif self._is_op(word_plus):
                             i += 1
-                            self.word_token.append(WordToken(len(self.word_token), word, self._get_code(word_plus)))
+                            self.word_token.append(WordToken(len(self.word_token), word_plus, self._get_code(word_plus)))
                         elif self._is_delimiter(word):
                             self.word_token.append(WordToken(len(self.word_token), word, self._get_code(word)))
                         elif self._is_delimiter(word_plus):
                             i += 1
-                            self.word_token.append(WordToken(len(self.word_token), word, self._get_code(word_plus)))
+                            self.word_token.append(WordToken(len(self.word_token), word_plus, self._get_code(word_plus)))
                         else:
                             raise WordAnalyseException('非法字符')
                 else:  # 字符为空时直接跳过

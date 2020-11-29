@@ -36,7 +36,7 @@ class Grammar:
 
 class PriorityTable:
     def __init__(self):
-        self.terminal = []
+        self.terminal = []  # 所有的非终结符
         self.firstvt: (str, set) = {}
         self.lastvt: (str, set) = {}
         self.relation = {0: 'ni', 1: '=', 2: '<', 3: '>'}
@@ -55,6 +55,9 @@ class GrammarAnalyzer:
         self.priority_table: PriorityTable = PriorityTable()
 
         self._load_grammar_table(grammar_table_path)
+
+        self.gen_firstvt_lastvt()
+        self.gen_priority_table()
 
     def _load_grammar_table(self, path):
         if not os.path.exists(path):
@@ -96,7 +99,8 @@ class GrammarAnalyzer:
         # 考虑非终结符开头结尾的情况
         for each_grammar in reversed(self.grammar_table):
             if each_grammar.right[0].isupper():
-                self.priority_table.firstvt[each_grammar.left].update(self.priority_table.firstvt[each_grammar.right[0]])
+                self.priority_table.firstvt[each_grammar.left].update(
+                    self.priority_table.firstvt[each_grammar.right[0]])
             if each_grammar.right[-1].isupper():
                 self.priority_table.lastvt[each_grammar.left].update(self.priority_table.lastvt[each_grammar.right[-1]])
 
@@ -134,25 +138,85 @@ class GrammarAnalyzer:
                 # raise GrammarAnalyseException('优先表无此关系')
         self.table = table
 
+    def _analyse(self, word_token: List):
+        analyse_stack = ['#']
+        buffer_input = word_token
+        buffer_input.append('#')
+        relation_stack = []
+        num = 0  # 已经规约的次数
+
+        while analyse_stack != ['#', 'P', '#']:
+            if analyse_stack[-1] in self.priority_table.terminal:
+                last_non_terminal = analyse_stack[-1]
+            else:
+                last_non_terminal = analyse_stack[-2]
+
+            next_ch = buffer_input[0]
+
+            priority = self.table[self.priority_table.terminal.index(last_non_terminal)][
+                self.priority_table.terminal.index(next_ch)]
+            if priority is '<' or priority is '=':  # 如果是<或=直接接上
+                analyse_stack.append(next_ch)
+                buffer_input.pop(0)
+                relation_stack.append(priority)
+            else:  # 进行规约
+                # analyse_begin = self.find_last_less(relation_stack) + num + 1
+                relation_begin = self.find_last_less(relation_stack)
+                analyse_begin = self.find_analyse_begin(analyse_stack, relation_begin)
+                N = analyse_stack[analyse_begin:]  # 拿到需要规约的部分
+                flag = 0
+                while flag == 0:  # 对语句进行持续规约 到最顶层语句
+                    flag = 1
+                    for each_grammar in self.grammar_table:
+                        right = each_grammar.right.split(' ')
+                        if N == right:
+                            N = [each_grammar.left]
+                            flag = 0
+                            break
+                if len(N) != 1:
+                    ...  # 未找到规约语法
+                analyse_stack = analyse_stack[:analyse_begin]  # 删掉需要规约的最左素短语
+                relation_stack = relation_stack[:relation_begin]  # 删掉规约用过的符号
+                analyse_stack.append(N[0])  # 加上规约后的
+                num += 1
+            print('analyse_stack', analyse_stack)
+            print('buffer_input', buffer_input)
+            print('relation_stack', relation_stack)
+            print()
+
+
+    def find_last_less(self, relation_stack):
+        res = -1
+        for index, value in enumerate(relation_stack):
+            if value == '<':
+                res = index
+        if res == -1:
+            raise GrammarAnalyseException('规约出错，没有<')
+        else:
+            return res
+
+    def find_analyse_begin(self, analyse_stack, relation_begin):
+        res = relation_begin + 1
+        for each in analyse_stack[:res]:
+            if each.isupper():
+                res += 1
+        return res
+
+    def show_table(self):
+        for i in self.priority_table.terminal:
+            print('\t' + i, end='')
+        print()
+        for i, each in enumerate(self.table):
+            print(self.priority_table.terminal[i] + '\t', end='')
+            for j in each:
+                print(j + '\t', end='')
+            print()
+
 
 if __name__ == '__main__':
-    ga = GrammarAnalyzer('grammar_table_full.txt')
+    ga = GrammarAnalyzer('grammar_table_min.txt')
     for i in ga.grammar_table:
         print(i)
-    ga.gen_firstvt_lastvt()
-
     print('first', ga.priority_table.firstvt)
     print('last', ga.priority_table.lastvt)
-
-    ga.gen_priority_table()
-
-    for i in ga.priority_table.terminal:
-        print('\t' + i, end='')
-    print()
-    for i, each in enumerate(ga.table):
-        print(ga.priority_table.terminal[i] + '\t', end='')
-        for j in each:
-            print(j + '\t', end='')
-        print()
-
-
+    ga.show_table()

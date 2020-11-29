@@ -1,3 +1,2 @@
-int aa = 10,
-int bcd = 20,
-bool ure = true;
+program test
+   if 100 > 200 then aaa := 999
