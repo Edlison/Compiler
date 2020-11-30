@@ -1,14 +1,25 @@
 # @Author  : Edlison
 # @Date    : 11/17/20 00:11
 import os
-from typing import List, Dict, Set
+from typing import List
 from compiler_exception import GrammarAnalyseException
-
-# TODO 1.通过产生式 生成树 2.通过树进行语义分析
 
 
 class Grammar:
     def __init__(self, id: int, left: str, right: str):
+        """
+        store each grammar.
+
+        Args:
+            id(int): grammar identification.
+            left(str): left part of each grammar.
+            right(str): right part of each grammar.
+
+        Returns:
+
+        @Author  : Edlison
+        @Date    : 12/1/20 02:39
+        """
         self.id = id  # 文法序号
         self.left = left  # 文法左半部分
         self.right = right  # 文法右半部分
@@ -28,6 +39,16 @@ class Grammar:
 
 class PriorityTable:
     def __init__(self):
+        """
+        To generate priority table.
+
+        Args:
+
+        Returns:
+
+        @Author  : Edlison
+        @Date    : 12/1/20 02:41
+        """
         self.terminal = []  # 所有的非终结符
         self.firstvt: (str, set) = {}
         self.lastvt: (str, set) = {}
@@ -41,15 +62,14 @@ class PriorityTable:
 
 
 class GrammarAnalyzer:
-    def __init__(self, grammar_table_path):
+    def __init__(self, grammar_table_path, ):
         self.text = ''
         self.grammar_table: List[Grammar] = []
         self.priority_table: PriorityTable = PriorityTable()
 
         self._load_grammar_table(grammar_table_path)
-
-        self.gen_firstvt_lastvt()
-        self.gen_priority_table()
+        self._gen_firstvt_lastvt()
+        self._gen_priority_table()
 
     def _load_grammar_table(self, path):
         if not os.path.exists(path):
@@ -61,7 +81,7 @@ class GrammarAnalyzer:
         for each in grammar_list:
             self.grammar_table.append(Grammar(each[0], each[1], each[2]))
 
-    def gen_firstvt_lastvt(self):
+    def _gen_firstvt_lastvt(self):
         # 生成priority_table独立的firstvt lastvt
         for each_grammar in self.grammar_table:
             if not self.priority_table.firstvt.get(each_grammar.left) and not self.priority_table.lastvt.get(
@@ -96,7 +116,7 @@ class GrammarAnalyzer:
             if each_grammar.right[-1].isupper():
                 self.priority_table.lastvt[each_grammar.left].update(self.priority_table.lastvt[each_grammar.right[-1]])
 
-    def gen_priority_table(self):
+    def _gen_priority_table(self):
         # Table拿到所有终结符
         for each_grammar in self.grammar_table:
             terminal = each_grammar.terminal
@@ -130,12 +150,11 @@ class GrammarAnalyzer:
                 # raise GrammarAnalyseException('优先表无此关系')
         self.table = table
 
-    def _analyse(self, word_token: List):
+    def analyse(self, word_token: List):
         analyse_stack = ['#']
         buffer_input = word_token
         buffer_input.append('#')
         relation_stack = []
-        num = 0  # 已经规约的次数
 
         while analyse_stack != ['#', 'P', '#']:
             if analyse_stack[-1] in self.priority_table.terminal:
@@ -152,9 +171,8 @@ class GrammarAnalyzer:
                 buffer_input.pop(0)
                 relation_stack.append(priority)
             else:  # 进行规约
-                # analyse_begin = self.find_last_less(relation_stack) + num + 1
-                relation_begin = self.find_last_less(relation_stack)
-                analyse_begin = self.find_analyse_begin(analyse_stack, relation_begin)
+                relation_begin = self._find_last_less(relation_stack)
+                analyse_begin = self._find_analyse_begin(analyse_stack, relation_begin)
                 N = analyse_stack[analyse_begin:]  # 拿到需要规约的部分
                 flag = 0
                 while flag == 0:  # 对语句进行持续规约 到最顶层语句
@@ -163,20 +181,20 @@ class GrammarAnalyzer:
                         right = each_grammar.right.split(' ')
                         if N == right:
                             N = [each_grammar.left]
+                            print(each_grammar.left + '->' + each_grammar.right)  # 输出规约的语法
                             flag = 0
                             break
                 if len(N) != 1:
-                    ...  # 未找到规约语法
+                    raise GrammarAnalyseException('未找到规约语法')
                 analyse_stack = analyse_stack[:analyse_begin]  # 删掉需要规约的最左素短语
                 relation_stack = relation_stack[:relation_begin]  # 删掉规约用过的符号
                 analyse_stack.append(N[0])  # 加上规约后的
-                num += 1
             print('analyse_stack', analyse_stack)
             print('buffer_input', buffer_input)
             print('relation_stack', relation_stack)
             print()
 
-    def find_last_less(self, relation_stack):
+    def _find_last_less(self, relation_stack):
         res = -1
         for index, value in enumerate(relation_stack):
             if value == '<':
@@ -186,7 +204,7 @@ class GrammarAnalyzer:
         else:
             return res
 
-    def find_analyse_begin(self, analyse_stack, relation_begin):
+    def _find_analyse_begin(self, analyse_stack, relation_begin):
         res = relation_begin + 1
         index = 0
         for each in analyse_stack:
@@ -206,12 +224,3 @@ class GrammarAnalyzer:
             for j in each:
                 print(j + '\t', end='')
             print()
-
-
-if __name__ == '__main__':
-    ga = GrammarAnalyzer('grammar_table_full.txt')
-    for i in ga.grammar_table:
-        print(i)
-    print('first', ga.priority_table.firstvt)
-    print('last', ga.priority_table.lastvt)
-    ga.show_table()

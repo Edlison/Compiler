@@ -2,17 +2,8 @@
 # @Date    : 11/30/20 23:43
 
 import os
-from typing import List, Dict, Set
-from compiler_exception import GrammarAnalyseException
-
-# TODO 1.通过产生式 生成树 2.通过树进行语义分析
-# TODO 实现一个控制语句的翻译
-
-
-class Tree:
-    def __init__(self, item):
-        self.item = item
-        self.child = []
+from typing import List
+from compiler_exception import GrammarAnalyseException, MeaningAnalyseException
 
 
 class Node:
@@ -22,6 +13,16 @@ class Node:
 
 class Grammar:
     def __init__(self, id: int, left: str, right: str):
+        """
+        As same sa Grammar in grammar_analysis.
+
+        Args:
+
+        Returns:
+
+        @Author  : Edlison
+        @Date    : 12/1/20 02:48
+        """
         self.id = id  # 文法序号
         self.left = left  # 文法左半部分
         self.right = right  # 文法右半部分
@@ -41,6 +42,16 @@ class Grammar:
 
 class PriorityTable:
     def __init__(self):
+        """
+        As same as PriorityTable in grammar_analysis.
+
+        Args:
+
+        Returns:
+
+        @Author  : Edlison
+        @Date    : 12/1/20 02:48
+        """
         self.terminal = []  # 所有的非终结符
         self.firstvt: (str, set) = {}
         self.lastvt: (str, set) = {}
@@ -53,7 +64,7 @@ class PriorityTable:
         return False
 
 
-class GrammarAnalyzer:
+class MeaningAnalyzer:
     def __init__(self, grammar_table_path):
         self.text = ''
         self.grammar_table: List[Grammar] = []
@@ -61,8 +72,8 @@ class GrammarAnalyzer:
 
         self._load_grammar_table(grammar_table_path)
 
-        self.gen_firstvt_lastvt()
-        self.gen_priority_table()
+        self._gen_firstvt_lastvt()
+        self._gen_priority_table()
 
     def _load_grammar_table(self, path):
         if not os.path.exists(path):
@@ -74,7 +85,7 @@ class GrammarAnalyzer:
         for each in grammar_list:
             self.grammar_table.append(Grammar(each[0], each[1], each[2]))
 
-    def gen_firstvt_lastvt(self):
+    def _gen_firstvt_lastvt(self):
         # 生成priority_table独立的firstvt lastvt
         for each_grammar in self.grammar_table:
             if not self.priority_table.firstvt.get(each_grammar.left) and not self.priority_table.lastvt.get(
@@ -109,7 +120,7 @@ class GrammarAnalyzer:
             if each_grammar.right[-1].isupper():
                 self.priority_table.lastvt[each_grammar.left].update(self.priority_table.lastvt[each_grammar.right[-1]])
 
-    def gen_priority_table(self):
+    def _gen_priority_table(self):
         # Table拿到所有终结符
         for each_grammar in self.grammar_table:
             terminal = each_grammar.terminal
@@ -143,7 +154,7 @@ class GrammarAnalyzer:
                 # raise GrammarAnalyseException('优先表无此关系')
         self.table = table
 
-    def _analyse(self, word_token: List):
+    def analyse(self, word_token: List):
         analyse_stack = ['#']
         buffer_input = word_token
         buffer_input.append('#')
@@ -168,8 +179,8 @@ class GrammarAnalyzer:
                 buffer_input.pop(0)
                 relation_stack.append(priority)
             else:  # 进行规约
-                relation_begin = self.find_last_less(relation_stack)
-                analyse_begin = self.find_analyse_begin(analyse_stack, relation_begin)
+                relation_begin = self._find_last_less(relation_stack)
+                analyse_begin = self._find_analyse_begin(analyse_stack, relation_begin)
                 N = analyse_stack[analyse_begin:]  # 拿到需要规约的部分
                 flag = 0
                 while flag == 0:  # 对语句进行持续规约 到最顶层语句
@@ -182,44 +193,40 @@ class GrammarAnalyzer:
                             if each_grammar.id == 1:
                                 print(nextquad, end='')
                                 nextquad += 1
-                                self.emit('=', tree_stack.pop(), Node(''), Node('id.name'))
+                                self._emit('=', tree_stack.pop(), Node(''), Node('id.name'))
                             elif each_grammar.id == 2:
                                 node = Node('T' + str(newtemp))
                                 newtemp += 1
                                 print(nextquad, end='')
                                 nextquad += 1
-                                self.emit('+', tree_stack.pop(), tree_stack.pop(), node)
+                                self._emit('+', tree_stack.pop(), tree_stack.pop(), node)
                                 tree_stack.append(node)
                             elif each_grammar.id == 3:
                                 node = Node('T' + str(newtemp))
                                 newtemp += 1
                                 print(nextquad, end='')
                                 nextquad += 1
-                                self.emit('*', tree_stack.pop(), tree_stack.pop(), node)
+                                self._emit('*', tree_stack.pop(), tree_stack.pop(), node)
                                 tree_stack.append(node)
                             elif each_grammar.id == 4:
                                 ...
                             elif each_grammar.id == 5:
                                 tree_stack.append(Node('id' + str(newid)))
                                 newid += 1
-                            else:
-                                print('error')  # error
+                            else:  # 待加入其他语法翻译
+                                raise MeaningAnalyseException('未找到相关语义')
                             flag = 0
                             break
                 if len(N) != 1:
-                    ...  # 未找到规约语法
+                    raise MeaningAnalyseException('未找到规约语法')
                 analyse_stack = analyse_stack[:analyse_begin]  # 删掉需要规约的最左素短语
                 relation_stack = relation_stack[:relation_begin]  # 删掉规约用过的符号
                 analyse_stack.append(N[0])  # 加上规约后的
-            # print('analyse_stack', analyse_stack)
-            # print('buffer_input', buffer_input)
-            # print('relation_stack', relation_stack)
-            # print()
 
-    def emit(self, op: str, node1: Node, node2: Node, node_current: Node):
+    def _emit(self, op: str, node1: Node, node2: Node, node_current: Node):
         print('(' + op + ', ' + node1.place + ', ' + node2.place + ', ' + node_current.place + ')')
 
-    def find_last_less(self, relation_stack):
+    def _find_last_less(self, relation_stack):
         res = -1
         for index, value in enumerate(relation_stack):
             if value == '<':
@@ -229,7 +236,7 @@ class GrammarAnalyzer:
         else:
             return res
 
-    def find_analyse_begin(self, analyse_stack, relation_begin):
+    def _find_analyse_begin(self, analyse_stack, relation_begin):
         res = relation_begin + 1
         index = 0
         for each in analyse_stack:
@@ -249,12 +256,3 @@ class GrammarAnalyzer:
             for j in each:
                 print(j + '\t', end='')
             print()
-
-
-if __name__ == '__main__':
-    ga = GrammarAnalyzer('grammar_table_full.txt')
-    for i in ga.grammar_table:
-        print(i)
-    print('first', ga.priority_table.firstvt)
-    print('last', ga.priority_table.lastvt)
-    ga.show_table()
