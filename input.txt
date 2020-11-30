@@ -1,2 +1,4 @@
 program test
-   if 100 > 200 then aaa := 999
+   if 100 > 200 then
+   while 1 < 2 do
+   var c : bool ;

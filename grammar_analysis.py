@@ -4,8 +4,6 @@ import os
 from typing import List, Dict, Set
 from compiler_exception import GrammarAnalyseException
 
-
-# TODO 1.analyse stack 生成产生式
 # TODO 1.通过产生式 生成树 2.通过树进行语义分析
 
 
@@ -184,7 +182,6 @@ class GrammarAnalyzer:
             print('relation_stack', relation_stack)
             print()
 
-
     def find_last_less(self, relation_stack):
         res = -1
         for index, value in enumerate(relation_stack):
@@ -197,10 +194,14 @@ class GrammarAnalyzer:
 
     def find_analyse_begin(self, analyse_stack, relation_begin):
         res = relation_begin + 1
-        for each in analyse_stack[:res]:
-            if each.isupper():
-                res += 1
-        return res
+        index = 0
+        for each in analyse_stack:
+            if res == 0:
+                break
+            if not each.isupper():
+                res -= 1
+            index += 1
+        return index
 
     def show_table(self):
         for i in self.priority_table.terminal:
@@ -214,7 +215,7 @@ class GrammarAnalyzer:
 
 
 if __name__ == '__main__':
-    ga = GrammarAnalyzer('grammar_table_min.txt')
+    ga = GrammarAnalyzer('grammar_table_full.txt')
     for i in ga.grammar_table:
         print(i)
     print('first', ga.priority_table.firstvt)
