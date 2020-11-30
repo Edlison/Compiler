@@ -1,10 +1,23 @@
 # @Author  : Edlison
-# @Date    : 11/17/20 00:11
+# @Date    : 11/30/20 23:43
+
 import os
 from typing import List, Dict, Set
 from compiler_exception import GrammarAnalyseException
 
 # TODO 1.通过产生式 生成树 2.通过树进行语义分析
+# TODO 实现一个控制语句的翻译
+
+
+class Tree:
+    def __init__(self, item):
+        self.item = item
+        self.child = []
+
+
+class Node:
+    def __init__(self, place):
+        self.place = place
 
 
 class Grammar:
@@ -135,7 +148,10 @@ class GrammarAnalyzer:
         buffer_input = word_token
         buffer_input.append('#')
         relation_stack = []
-        num = 0  # 已经规约的次数
+        nextquad = 100
+        newtemp = 0
+        newid = 0
+        tree_stack = []
 
         while analyse_stack != ['#', 'P', '#']:
             if analyse_stack[-1] in self.priority_table.terminal:
@@ -152,7 +168,6 @@ class GrammarAnalyzer:
                 buffer_input.pop(0)
                 relation_stack.append(priority)
             else:  # 进行规约
-                # analyse_begin = self.find_last_less(relation_stack) + num + 1
                 relation_begin = self.find_last_less(relation_stack)
                 analyse_begin = self.find_analyse_begin(analyse_stack, relation_begin)
                 N = analyse_stack[analyse_begin:]  # 拿到需要规约的部分
@@ -163,6 +178,32 @@ class GrammarAnalyzer:
                         right = each_grammar.right.split(' ')
                         if N == right:
                             N = [each_grammar.left]
+                            # 判断表达式翻译
+                            if each_grammar.id == 1:
+                                print(nextquad, end='')
+                                nextquad += 1
+                                self.emit('=', tree_stack.pop(), Node(''), Node('id.name'))
+                            elif each_grammar.id == 2:
+                                node = Node('T' + str(newtemp))
+                                newtemp += 1
+                                print(nextquad, end='')
+                                nextquad += 1
+                                self.emit('+', tree_stack.pop(), tree_stack.pop(), node)
+                                tree_stack.append(node)
+                            elif each_grammar.id == 3:
+                                node = Node('T' + str(newtemp))
+                                newtemp += 1
+                                print(nextquad, end='')
+                                nextquad += 1
+                                self.emit('*', tree_stack.pop(), tree_stack.pop(), node)
+                                tree_stack.append(node)
+                            elif each_grammar.id == 4:
+                                ...
+                            elif each_grammar.id == 5:
+                                tree_stack.append(Node('id' + str(newid)))
+                                newid += 1
+                            else:
+                                print('error')  # error
                             flag = 0
                             break
                 if len(N) != 1:
@@ -170,11 +211,13 @@ class GrammarAnalyzer:
                 analyse_stack = analyse_stack[:analyse_begin]  # 删掉需要规约的最左素短语
                 relation_stack = relation_stack[:relation_begin]  # 删掉规约用过的符号
                 analyse_stack.append(N[0])  # 加上规约后的
-                num += 1
-            print('analyse_stack', analyse_stack)
-            print('buffer_input', buffer_input)
-            print('relation_stack', relation_stack)
-            print()
+            # print('analyse_stack', analyse_stack)
+            # print('buffer_input', buffer_input)
+            # print('relation_stack', relation_stack)
+            # print()
+
+    def emit(self, op: str, node1: Node, node2: Node, node_current: Node):
+        print('(' + op + ', ' + node1.place + ', ' + node2.place + ', ' + node_current.place + ')')
 
     def find_last_less(self, relation_stack):
         res = -1

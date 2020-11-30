@@ -185,6 +185,7 @@ class WordAnalyzer:
                             raise WordAnalyseException('非法字符')
                 else:  # 字符为空时直接跳过
                     i += 1
+
     def show(self):
         print('Input text:\n', self.text)
         print('\nWord Token')
@@ -196,5 +197,5 @@ class WordAnalyzer:
 
 
 if __name__ == '__main__':
-    wa = WordAnalyzer(table='./words_table.txt', input='./input.txt')
+    wa = WordAnalyzer(table='./words_table.txt', input='./input_1.txt')
     wa.show()
